@@ -393,16 +393,16 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 	int		tuplelen;
 	int		ret;
 	
+	PyGILState_STATE gstate;
 	PyThreadState	*prev_thread_state;
 
 	/* Return with "OK, continue" if the function is not defined. */
 	if (!pFunc)
 		return RLM_MODULE_NOOP;
 	
-	Pyx_BLOCK_THREADS
-	
 #ifdef HAVE_PTHREAD_H
 	if (worker) {
+		gstate = PyGILState_Ensure();
 		PyThreadState *my_thread_state = fr_thread_local_get(local_thread_state);
 		if (!my_thread_state) {
 			pthread_key_t tls_destructor;
@@ -565,9 +565,9 @@ finish:
 #ifdef HAVE_PTHREAD_H
 	if (worker) {
 		PyThreadState_Swap(prev_thread_state);
+		PyGILState_Release(gstate);
 	}
 #endif
-	Pyx_UNBLOCK_THREADS
 
 	return ret;
 }
